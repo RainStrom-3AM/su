@@ -104,6 +104,30 @@ export const playbackState = pgTable('playback_state', {
   updatedAt: timestamp('updatedAt').notNull().defaultNow(),
 })
 
+export const youtubeConnection = pgTable('youtube_connection', {
+  userId: text('userId').primaryKey(),
+  accessToken: text('accessToken').notNull(),
+  refreshToken: text('refreshToken'),
+  expiresAt: timestamp('expiresAt'),
+  channelTitle: text('channelTitle'),
+  lastSyncedAt: timestamp('lastSyncedAt'),
+  createdAt: timestamp('createdAt').notNull().defaultNow(),
+})
+
+export const youtubeLikes = pgTable('youtube_likes', {
+  id: serial('id').primaryKey(),
+  userId: text('userId').notNull(),
+  videoId: text('videoId').notNull(),
+  title: text('title').notNull(),
+  channelTitle: text('channelTitle'),
+  thumbnailUrl: text('thumbnailUrl'),
+  durationMs: integer('durationMs').notNull().default(0),
+  position: integer('position').notNull().default(0),
+  createdAt: timestamp('createdAt').notNull().defaultNow(),
+})
+
 export type Track = typeof tracks.$inferSelect
 export type Playlist = typeof playlists.$inferSelect
 export type PlaybackState = typeof playbackState.$inferSelect
+export type YoutubeConnection = typeof youtubeConnection.$inferSelect
+export type YoutubeLike = typeof youtubeLikes.$inferSelect

@@ -1,7 +1,7 @@
 'use client'
 
-import { useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useMemo, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import {
   Library,
   ListMusic,
@@ -12,13 +12,15 @@ import {
   LogOut,
   Music4,
   X,
+  MonitorPlay,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import type { Track, Playlist } from '@/lib/db/schema'
+import type { Track, Playlist, YoutubeLike } from '@/lib/db/schema'
 import { PlayerProvider, usePlayer } from '@/components/player-provider'
 import { PlayerBar } from '@/components/player-bar'
 import { TrackList } from '@/components/track-list'
 import { UploadDialog } from '@/components/upload-dialog'
+import { YoutubeView } from '@/components/youtube-view'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -31,20 +33,37 @@ import {
   removeTrackFromPlaylist,
 } from '@/app/actions/playlists'
 
-type View = { type: 'library' } | { type: 'playlist'; id: number }
+type View =
+  | { type: 'library' }
+  | { type: 'playlist'; id: number }
+  | { type: 'youtube' }
+
+type YoutubeStatus =
+  | { connected: true; channelTitle: string | null; lastSyncedAt: Date | null }
+  | { connected: false }
 
 export function MusicApp({
   tracks,
   playlists,
+  youtubeStatus,
+  youtubeLikes,
   userName,
 }: {
   tracks: Track[]
   playlists: Playlist[]
+  youtubeStatus: YoutubeStatus
+  youtubeLikes: YoutubeLike[]
   userName: string
 }) {
   return (
     <PlayerProvider tracks={tracks}>
-      <Shell tracks={tracks} playlists={playlists} userName={userName} />
+      <Shell
+        tracks={tracks}
+        playlists={playlists}
+        youtubeStatus={youtubeStatus}
+        youtubeLikes={youtubeLikes}
+        userName={userName}
+      />
     </PlayerProvider>
   )
 }
@@ -52,13 +71,18 @@ export function MusicApp({
 function Shell({
   tracks,
   playlists,
+  youtubeStatus,
+  youtubeLikes,
   userName,
 }: {
   tracks: Track[]
   playlists: Playlist[]
+  youtubeStatus: YoutubeStatus
+  youtubeLikes: YoutubeLike[]
   userName: string
 }) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { playQueue } = usePlayer()
   const [view, setView] = useState<View>({ type: 'library' })
   const [query, setQuery] = useState('')
@@ -78,6 +102,20 @@ function Shell({
         t.album.toLowerCase().includes(q),
     )
   }, [tracks, query])
+
+  // Show a toast after returning from the YouTube OAuth redirect.
+  useEffect(() => {
+    const yt = searchParams.get('youtube')
+    if (!yt) return
+    if (yt === 'connected') {
+      toast.success('YouTube connected')
+      setView({ type: 'youtube' })
+    } else if (yt === 'error') {
+      toast.error('Could not connect YouTube. Please try again.')
+    }
+    router.replace('/')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
 
   const activePlaylist =
     view.type === 'playlist' ? playlists.find((p) => p.id === view.id) : null
@@ -131,6 +169,19 @@ function Shell({
             >
               <Library className="size-4" />
               Library
+            </button>
+            <button
+              type="button"
+              onClick={() => setView({ type: 'youtube' })}
+              className={cn(
+                'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                view.type === 'youtube'
+                  ? 'bg-secondary text-foreground'
+                  : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              <MonitorPlay className="size-4" />
+              YouTube
             </button>
           </nav>
 
@@ -267,57 +318,76 @@ function Shell({
 
           <ScrollArea className="flex-1">
             <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6">
-              {/* Header block */}
-              <div className="mb-6 flex items-end justify-between gap-4">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-primary">
-                    {view.type === 'library' ? 'Your Library' : 'Playlist'}
-                  </p>
-                  <h1 className="text-balance text-3xl font-bold tracking-tight text-foreground">
-                    {view.type === 'library'
-                      ? query
-                        ? `Results for "${query}"`
-                        : 'All Tracks'
-                      : (activePlaylist?.name ?? 'Playlist')}
-                  </h1>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {displayedTracks.length} track
-                    {displayedTracks.length === 1 ? '' : 's'}
-                  </p>
-                </div>
-                {displayedTracks.length > 0 && (
-                  <Button
-                    onClick={() =>
-                      playQueue(displayedTracks.map((t) => t.id), 0)
-                    }
-                  >
-                    <Play data-icon="inline-start" className="fill-current" />
-                    Play all
-                  </Button>
-                )}
-              </div>
-
-              {loadingView ? (
-                <p className="py-16 text-center text-sm text-muted-foreground">
-                  Loading...
-                </p>
+              {view.type === 'youtube' ? (
+                <>
+                  <div className="mb-6">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+                      Connected Account
+                    </p>
+                    <h1 className="text-balance text-3xl font-bold tracking-tight text-foreground">
+                      YouTube Likes
+                    </h1>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Your liked videos, synced from YouTube.
+                    </p>
+                  </div>
+                  <YoutubeView status={youtubeStatus} likes={youtubeLikes} />
+                </>
               ) : (
-                <TrackList
-                  tracks={displayedTracks}
-                  playlists={playlists}
-                  onRemoveFromPlaylist={
-                    view.type === 'playlist'
-                      ? async (trackId) => {
-                          const linkId = playlistLinks.get(trackId)
-                          if (linkId) {
-                            await removeTrackFromPlaylist(linkId)
-                            await openPlaylist(view.id)
-                            toast.success('Removed from playlist')
-                          }
+                <>
+                  {/* Header block */}
+                  <div className="mb-6 flex items-end justify-between gap-4">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+                        {view.type === 'library' ? 'Your Library' : 'Playlist'}
+                      </p>
+                      <h1 className="text-balance text-3xl font-bold tracking-tight text-foreground">
+                        {view.type === 'library'
+                          ? query
+                            ? `Results for "${query}"`
+                            : 'All Tracks'
+                          : (activePlaylist?.name ?? 'Playlist')}
+                      </h1>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {displayedTracks.length} track
+                        {displayedTracks.length === 1 ? '' : 's'}
+                      </p>
+                    </div>
+                    {displayedTracks.length > 0 && (
+                      <Button
+                        onClick={() =>
+                          playQueue(displayedTracks.map((t) => t.id), 0)
                         }
-                      : undefined
-                  }
-                />
+                      >
+                        <Play data-icon="inline-start" className="fill-current" />
+                        Play all
+                      </Button>
+                    )}
+                  </div>
+
+                  {loadingView ? (
+                    <p className="py-16 text-center text-sm text-muted-foreground">
+                      Loading...
+                    </p>
+                  ) : (
+                    <TrackList
+                      tracks={displayedTracks}
+                      playlists={playlists}
+                      onRemoveFromPlaylist={
+                        view.type === 'playlist'
+                          ? async (trackId) => {
+                              const linkId = playlistLinks.get(trackId)
+                              if (linkId) {
+                                await removeTrackFromPlaylist(linkId)
+                                await openPlaylist(view.id)
+                                toast.success('Removed from playlist')
+                              }
+                            }
+                          : undefined
+                      }
+                    />
+                  )}
+                </>
               )}
             </div>
           </ScrollArea>
