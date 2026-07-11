@@ -1,17 +1,14 @@
 'use server'
 
-import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { tracks } from '@/lib/db/schema'
 import { and, desc, eq } from 'drizzle-orm'
-import { headers } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 import { del } from '@vercel/blob'
+import { USER_ID } from '@/lib/user'
 
 async function getUserId() {
-  const session = await auth.api.getSession({ headers: await headers() })
-  if (!session?.user) throw new Error('Unauthorized')
-  return session.user.id
+  return USER_ID
 }
 
 export async function getTracks() {

@@ -1,17 +1,14 @@
 'use server'
 
-import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { youtubeConnection, youtubeLikes } from '@/lib/db/schema'
 import { asc, eq } from 'drizzle-orm'
-import { headers } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 import { fetchLikedVideos, refreshAccessToken } from '@/lib/youtube'
+import { USER_ID } from '@/lib/user'
 
 async function getUserId() {
-  const session = await auth.api.getSession({ headers: await headers() })
-  if (!session?.user) throw new Error('Unauthorized')
-  return session.user.id
+  return USER_ID
 }
 
 export async function getYoutubeStatus() {

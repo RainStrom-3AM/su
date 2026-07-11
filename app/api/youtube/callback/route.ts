@@ -1,18 +1,13 @@
 import { type NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { youtubeConnection } from '@/lib/db/schema'
 import {
   exchangeCodeForTokens,
   fetchChannelTitle,
 } from '@/lib/youtube'
+import { USER_ID } from '@/lib/user'
 
 export async function GET(request: NextRequest) {
-  const session = await auth.api.getSession({ headers: request.headers })
-  if (!session?.user) {
-    return NextResponse.redirect(new URL('/sign-in', request.url))
-  }
-
   const url = request.nextUrl
   const code = url.searchParams.get('code')
   const state = url.searchParams.get('state')
@@ -38,7 +33,7 @@ export async function GET(request: NextRequest) {
     await db
       .insert(youtubeConnection)
       .values({
-        userId: session.user.id,
+        userId: USER_ID,
         accessToken: tokens.access_token,
         refreshToken: tokens.refresh_token ?? null,
         expiresAt,

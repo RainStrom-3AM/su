@@ -9,7 +9,6 @@ import {
   Search,
   Play,
   Trash2,
-  LogOut,
   Music4,
   X,
   MonitorPlay,
@@ -25,7 +24,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
-import { signOut } from '@/lib/auth-client'
 import {
   createPlaylist,
   deletePlaylist,
@@ -47,13 +45,11 @@ export function MusicApp({
   playlists,
   youtubeStatus,
   youtubeLikes,
-  userName,
 }: {
   tracks: Track[]
   playlists: Playlist[]
   youtubeStatus: YoutubeStatus
   youtubeLikes: YoutubeLike[]
-  userName: string
 }) {
   return (
     <PlayerProvider tracks={tracks}>
@@ -62,7 +58,6 @@ export function MusicApp({
         playlists={playlists}
         youtubeStatus={youtubeStatus}
         youtubeLikes={youtubeLikes}
-        userName={userName}
       />
     </PlayerProvider>
   )
@@ -73,13 +68,11 @@ function Shell({
   playlists,
   youtubeStatus,
   youtubeLikes,
-  userName,
 }: {
   tracks: Track[]
   playlists: Playlist[]
   youtubeStatus: YoutubeStatus
   youtubeLikes: YoutubeLike[]
-  userName: string
 }) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -263,25 +256,18 @@ function Shell({
           </ScrollArea>
 
           <div className="border-t border-border px-3 py-3">
-            <div className="flex items-center justify-between gap-2 px-2">
+            <div className="flex items-center gap-2 px-2">
+              <div className="flex size-8 items-center justify-center rounded-md bg-primary/10">
+                <Music4 className="size-4 text-primary" />
+              </div>
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium text-foreground">
-                  {userName}
+                  Resonance
                 </p>
-                <p className="text-xs text-muted-foreground">Signed in</p>
+                <p className="text-xs text-muted-foreground">
+                  Synced across your devices
+                </p>
               </div>
-              <button
-                type="button"
-                aria-label="Sign out"
-                onClick={async () => {
-                  await signOut()
-                  router.push('/sign-in')
-                  router.refresh()
-                }}
-                className="flex size-8 items-center justify-center rounded text-muted-foreground transition-colors hover:text-foreground"
-              >
-                <LogOut className="size-4" />
-              </button>
             </div>
           </div>
         </aside>

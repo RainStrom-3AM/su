@@ -1,14 +1,8 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { randomBytes } from 'crypto'
-import { auth } from '@/lib/auth'
 import { buildAuthUrl } from '@/lib/youtube'
 
 export async function GET(request: NextRequest) {
-  const session = await auth.api.getSession({ headers: request.headers })
-  if (!session?.user) {
-    return NextResponse.redirect(new URL('/sign-in', request.url))
-  }
-
   const origin = request.nextUrl.origin
   const state = randomBytes(16).toString('hex')
   const authUrl = buildAuthUrl(origin, state)
